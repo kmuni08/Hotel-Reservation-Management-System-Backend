@@ -24,10 +24,6 @@ const signup = async (req, res, next) => {
         );
     }
     const {name, email, user_type, password} = req.body;
-    // const hasUser = USERS.find( u => u.email === email);
-    // if(hasUser) {
-    //     throw new HttpError('Could not create user. Email already exists. ', 422);
-    // }
 
     let existingUser;
     try {

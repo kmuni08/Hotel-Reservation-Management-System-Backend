@@ -1,71 +1,15 @@
 const { v4: uuidv4 } = require('uuid');
+const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 
 const HttpError = require('../models/http-error');
 const getCoordsForAddress = require('../util/location');
 const Hotel = require('../models/hotel');
-
-const { validationResult } = require('express-validator');
-
-let HOTELS = [
-    {
-        hid: '1',
-        image: 'https://content.fortune.com/wp-content/uploads/2020/05/F500-2020-338-Hilton-.jpg',
-        name: 'New York Stock Exchange',
-        rating: 4.0,
-        address: '11 Wall St, New York, NY 10005',
-        creator: 'u1',
-        location: {
-            lat: 40.7484405,
-            lng: -73.9878584
-        },
-        description: 'Airport hotel with a pool and free shuttle. Free Wi-Fi',
-        deluxe: {
-            numOfRooms: 25,
-            price: 300
-        },
-        standard: {
-            numOfRooms: 50,
-            price: 85
-        },
-        suites: {
-            numOfRooms: 15,
-            price: 150
-        }
-    },
-    {
-        hid: '2',
-        image: 'https://www.gannett-cdn.com/presto/2019/04/16/USAT/15d11370-b0e6-4743-adf0-387d1fa95ab5-AP_Marriott_Starwood_Sale.JPG?crop=4851,2740,x0,y0&width=3200&height=1808&format=pjpg&auto=webp',
-        name: 'Marriot',
-        address: '11 Wall St, New York, NY 10005',
-        creator: 'u2',
-        location: {
-            lat: 40.7484405,
-            lng: -73.9878584
-        },
-        description: 'Free breakfast and Wi-Fi. It is near airport for easy access. ',
-        deluxe: {
-            numOfRooms: 15,
-            price: 250,
-            deluxe_user_pick: 0
-        },
-        standard: {
-            numOfRooms: 40,
-            price: 75,
-            standard_user_pick: 0
-        },
-        suites: {
-            numOfRooms: 10,
-            price: 120,
-            suites_user_pick: 0
-        }
-    }
-
-];
-
+const User = require('../models/user');
 
 const getHotelById = async (req, res, next) => {
-    const hotelId = req.params.hid
-    // console.log('GET Request in Places');
+    const hotelId = req.params.hid;
+
     let hotel;
     try {
         hotel = await Hotel.findById(hotelId);
@@ -80,10 +24,6 @@ const getHotelById = async (req, res, next) => {
     }
     res.json({hotel: hotel.toObject( {getters: true}) });
 }
-
-
-//function getHotelById() {..}
-//const getHotelById = function()
 
 const getHotelsByUserId = async (req, res, next) => {
     const userId = req.params.uid;
@@ -132,11 +72,31 @@ const createHotel = async (req, res, next) => {
         deluxe,
         standard,
         suites
-    })
+    });
 
-    // HOTELS.push(createdHotel);
+    let user;
     try {
-        await createdHotel.save();
+        user = await User.findById(creator);
+
+    } catch (err) {
+        const error = new HttpError('Creating hotel failed, please try again', 500);
+        return next(error);
+    }
+
+    if (!user) {
+        const error = new HttpError('Could not find user for provided id', 404);
+        return next(error);
+    }
+    console.log(user);
+
+    try {
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
+        await createdHotel.save({ session: sess });
+        user.hotels.push(createdHotel);
+        await user.save({ session: sess});
+        await sess.commitTransaction();
+
     } catch (err){
         const error = new HttpError('Creating hotel failed, please try again', 500);
         return next(error);
@@ -180,8 +140,6 @@ const updateHotel = async (req, res, next) => {
         return next(error);
     }
 
-    // HOTELS[hotelIndex] = updatedHotel;
-
     res.status(200).json({hotel: hotel.toObject({ getters: true })})
 };
 
@@ -190,14 +148,24 @@ const deleteHotel = async (req, res, next) => {
 
     let hotel;
     try {
-        hotel = await Hotel.findById(hotelId);
+        hotel = await Hotel.findById(hotelId).populate('creator');
     } catch (err) {
         const error = new HttpError('Something went wrong, could not delete hotel.', 500);
         return next(error);
     }
 
+    if(!hotel) {
+        const error = new HttpError('Could not find hotel for this id.', 404);
+        return next(error);
+    }
+
     try {
-        await hotel.remove();
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
+        await hotel.remove({session: sess});
+        hotel.creator.hotels.pull(hotel);
+        await hotel.creator.save({session: sess});
+        await sess.commitTransaction();
     } catch (err) {
         const error = new HttpError('Something went wrong, could not delete hotel.', 500);
         return next(error);

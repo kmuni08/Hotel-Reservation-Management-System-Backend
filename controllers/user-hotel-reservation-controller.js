@@ -85,7 +85,7 @@ const createHotelReservation = async (req, res, next) => {
         await currentUser.save({ session: sess});
         await sess.commitTransaction();
     } catch (err) {
-        const error = new HttpError('Reserving hotel failed, please try again', 500);
+        const error = new HttpError('Reserving hotel failed, please try again. If you are trying to make a reservation at a previous hotel you reserved and canceled, you have to contact the administrator to make a reservation at this hotel again. ', 500);
         return next(error);
     }
 
@@ -93,7 +93,7 @@ const createHotelReservation = async (req, res, next) => {
     // console.log("hotelId", hotelId);
     let hotel = await Hotel.findById(hotelId);
     // console.log(hotel.deluxeNumOfRooms, hotel.standardNumOfRooms, hotel.suitesNumOfRooms);
-    let reservedRooms = await Reservation.findOne({"hotel": hotelId, "user": currentUser});
+    let reservedRooms = await Reservation.findOne({"hotel": hotelId});
     // console.log(reservedRooms.deluxe_user_pick, reservedRooms.standard_user_pick, reservedRooms.suites_user_pick);
 
     try {
@@ -112,7 +112,9 @@ const createHotelReservation = async (req, res, next) => {
 };
 
 const cancelReservationByHotelId = async (req, res, next) => {
+
     const hotelId = req.params.hid;
+
     let hotel;
     try {
         hotel = await Hotel.findById(hotelId);
@@ -128,30 +130,50 @@ const cancelReservationByHotelId = async (req, res, next) => {
 
     let reservation;
     try {
-        reservation = await Reservation.findOneAndUpdate({"hotel": hotelId, "reservationStatus": "Canceled"});
+        reservation= await Reservation.findOneAndDelete(hotelId).populate('user');
+        console.log(reservation);
     } catch (err) {
-        const error = new HttpError('Something went wrong, could not find a reservation', 500);
+        const error = new HttpError('Something went wrong, could not delete reservation.', 500);
+        return next(error);
+    }
+    console.log(reservation);
+
+    if(!reservation) {
+        const error = new HttpError('Could not find reservation for this id.', 404);
         return next(error);
     }
 
-    if(!reservation) {
-        const error = new HttpError('Could not find reservation for the provided hotel ', 404);
+    if (reservation.user.id !== req.userData.userId) {
+        const error = new HttpError('You are not allowed to delete this reservation', 401);
+        return next(error);
+    }
+
+    try {
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
+        await reservation.remove({session: sess});
+        reservation.user.reservations.pull(reservation);
+        await reservation.user.save({session: sess});
+        await sess.commitTransaction();
+    } catch (err) {
+        const error = new HttpError('Something went wrong, could not delete reservation.', 500);
         return next(error);
     }
 
     try {
         await Hotel.findOneAndUpdate(
-            {"hotel": hotelId,
+            {
+                "hotel": hotelId,
                 deluxeNumOfRooms: reservation.deluxe_user_pick + hotel.deluxeNumOfRooms,
                 standardNumOfRooms: reservation.standard_user_pick + hotel.standardNumOfRooms,
                 suitesNumOfRooms: reservation.suites_user_pick + hotel.suitesNumOfRooms
-            });
+                });
     } catch (err) {
         const error = new HttpError('Something went wrong, could not find a hotel', 500);
         return next(error);
     }
 
-    res.status(200).json({message: 'Canceled reservation'});
+    res.status(200).json({message: 'Deleted reservation'})
 }
 
 exports.getReservationByHotelId = getReservationByHotelId;

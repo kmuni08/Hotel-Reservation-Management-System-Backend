@@ -14,8 +14,7 @@ const reservationSchema = new Schema({
     standardPrice: { type: Number, required: true },
     suites_user_pick: { type: Number, required: true },
     suitesPrice: { type: Number, required: true },
-    totalPayment: { type: Number, required: true },
-    reservationStatus: { type: String, required: true }
+    totalPayment: { type: Number, required: true }
 });
 
 module.exports = mongoose.model('Reservation', reservationSchema);

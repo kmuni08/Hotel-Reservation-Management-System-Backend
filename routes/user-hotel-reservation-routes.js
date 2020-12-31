@@ -40,7 +40,7 @@ router.post(
     ],
     userHotelReservationControllers.createHotelReservation);
 
-router.patch('/cancel/:hid', userHotelReservationControllers.cancelReservationByHotelId);
+router.delete('/cancel/:hid', userHotelReservationControllers.cancelReservationByHotelId);
 
 
 module.exports = router;

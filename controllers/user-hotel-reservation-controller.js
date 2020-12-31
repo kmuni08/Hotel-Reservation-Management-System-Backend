@@ -47,6 +47,20 @@ const createHotelReservation = async (req, res, next) => {
     }
     const { name, address, description, hotelId, deluxeNumOfRooms, deluxe_user_pick, deluxePrice, standardNumOfRooms,standard_user_pick, standardPrice, suitesNumOfRooms, suites_user_pick, suitesPrice } = req.body;
 
+    if((deluxe_user_pick > deluxeNumOfRooms) || (standard_user_pick > standardNumOfRooms) || (suites_user_pick > suitesNumOfRooms)) {
+        const error = new HttpError('Not suitable for reservation. Invalid data inputs', 404);
+        return next(error);
+    }
+
+    let reservedRoomsPreviously;
+    try {
+        reservedRoomsPreviously = await Reservation.findOne({"hotel": hotelId});
+        if(reservedRoomsPreviously) {
+            const error = new HttpError('Call the administrator if you would like to edit your reservation', 500);
+            return next(error);
+        }
+    } catch (err) {}
+
     const createdHotelReservation = new Reservation({
         id: uuidv4(),
         name,
@@ -88,13 +102,9 @@ const createHotelReservation = async (req, res, next) => {
         const error = new HttpError('Reserving hotel failed, please try again. If you are trying to make a reservation at a previous hotel you reserved and canceled, you have to contact the administrator to make a reservation at this hotel again. ', 500);
         return next(error);
     }
-
-    // console.log("userId", currentUser);
-    // console.log("hotelId", hotelId);
+    
     let hotel = await Hotel.findById(hotelId);
-    // console.log(hotel.deluxeNumOfRooms, hotel.standardNumOfRooms, hotel.suitesNumOfRooms);
     let reservedRooms = await Reservation.findOne({"hotel": hotelId});
-    // console.log(reservedRooms.deluxe_user_pick, reservedRooms.standard_user_pick, reservedRooms.suites_user_pick);
 
     try {
         await Hotel.findByIdAndUpdate(hotelId,
@@ -131,7 +141,6 @@ const cancelReservationByHotelId = async (req, res, next) => {
     let reservation;
     try {
         reservation= await Reservation.findOneAndDelete(hotelId).populate('user');
-        console.log(reservation);
     } catch (err) {
         const error = new HttpError('Something went wrong, could not delete reservation.', 500);
         return next(error);

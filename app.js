@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
+const reservationRoutes = require('./routes/user-hotel-reservation-routes');
 const hotelRoutes = require('./routes/hotels-routes');
 const usersRoutes = require('./routes/users-routes');
 const HttpError = require('./models/http-error');
@@ -10,7 +11,15 @@ const app = express();
 
 app.use(bodyParser.json());
 
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+    next();
+});
+
 app.use('/api/hotels', hotelRoutes);
+app.use('/api/reservations', reservationRoutes);
 app.use('/api/users', usersRoutes);
 
 app.use((req, res, next) => {
@@ -27,7 +36,7 @@ app.use((error, req, res, next) => {
 });
 
 mongoose
-    .connect(`mongodb+srv://kmuni08:randomrelated123@@cluster0.vbxke.mongodb.net/hotel-reservation-management?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true })
+    .connect(`mongodb+srv://kmuni08:randomrelated123@@cluster0.vbxke.mongodb.net/hotel-reservation-management-system?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true })
     .then(() => {
         app.listen(5000);
     })

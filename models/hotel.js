@@ -12,19 +12,12 @@ const hotelSchema = new Schema({
         lng: {type: Number, required: true }
     },
     creator: { type: mongoose.Types.ObjectId, required: true, ref: 'User' },
-    deluxe: {
-        numOfRooms: {type: Number, required: true},
-        price: {type: Number, required: true }
-    },
-    standard: {
-        numOfRooms: {type: Number, required: true},
-        price: {type: Number, required: true }
-    },
-    suites: {
-        numOfRooms: {type: Number, required: true},
-        price: {type: Number, required: true }
-    }
-
+    deluxeNumOfRooms: { type: Number, required: true },
+    deluxePrice: { type: Number, required: true },
+    standardNumOfRooms: { type: Number, required: true },
+    standardPrice: { type: Number, required: true },
+    suitesNumOfRooms: { type: Number, required: true },
+    suitesPrice: { type: Number, required: true }
 });
 
 module.exports = mongoose.model('Hotel', hotelSchema);

@@ -4,7 +4,10 @@ const checkAuth = require('../middleware/check-auth');
 const userHotelReservationControllers = require('../controllers/user-hotel-reservation-controller');
 const router = express.Router();
 
+
+router.get('/:creatorId', userHotelReservationControllers.getUsers);
 router.get('/:hid', userHotelReservationControllers.getReservationByHotelId);
+router.get('/uid/:uid', userHotelReservationControllers.getReservationByUserId);
 
 router.use(checkAuth);
 

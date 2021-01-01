@@ -7,6 +7,52 @@ const Reservation = require('../models/userHotelReservation');
 const User = require('../models/user');
 const Hotel = require('../models/hotel');
 
+const getUsers = async (req, res, next) => {
+
+    const creatorId = req.params.creatorId;
+
+    let hotelCreator;
+    try {
+        hotelCreator = await Hotel.findOne({"creator": creatorId});
+    } catch (err) {
+        const error = new HttpError('Something went wrong, could not find a hotel creator', 500);
+        return next(error);
+    }
+
+    if(!hotelCreator) {
+        const error = new HttpError('Could not find hotel for the provided creator id ', 404);
+        return next(error);
+    }
+
+    let findHotelAndUser;
+    try {
+        findHotelAndUser = await Reservation.findOne({"hotel": hotelCreator._id});
+    } catch (err) {
+        const error = new HttpError('Something went wrong, could not find a hotel or user', 500);
+        return next(error);
+    }
+
+    if(!findHotelAndUser) {
+        const error = new HttpError('Could not find hotel for the provided creator id or user ', 404);
+        return next(error);
+    }
+
+    let rightUser;
+    try {
+        // users = await User.find({_id: {$nin: ['5fee440aa9c27f16a037e2ee']}, $and: rightUser}, '-password');
+        // console.log("right", rightUser)
+        // console.log("first", users[0]._id)
+        rightUser = await User.find({_id: findHotelAndUser.user}, '-password');
+
+    } catch (err) {
+        const error = new HttpError('Fetching users failed, please try again later.', 500);
+        return next(error);
+    }
+    
+
+    res.json({rightUser: rightUser.map(user => user.toObject({getters: true}))});
+};
+
 const getReservationByHotelId = async (req, res, next) => {
     const hotelId = req.params.hid;
 
@@ -39,6 +85,39 @@ const getReservationByHotelId = async (req, res, next) => {
     res.json({reservation: reservation.toObject( {getters: true}) });
 }
 
+const getReservationByUserId = async (req, res, next) => {
+    const userIdentification = req.params.uid;
+
+    let user;
+    try {
+        user = await User.findById(userIdentification);
+    } catch (err) {
+        const error = new HttpError('Something went wrong, could not find this user.', 500);
+        return next(error);
+    }
+
+    if(!user) {
+        const error = new HttpError('Could not find a user for the provided id. ', 404);
+        return next(error);
+    }
+
+    let reservationForUser;
+    try {
+        reservationForUser = await Reservation.findOne({"user": userIdentification });
+    } catch (err) {
+        const error = new HttpError('Something went wrong, could not find a reservation for user.', 500);
+        return next(error);
+    }
+    console.log(reservationForUser);
+
+    if(!reservationForUser) {
+        const error = new HttpError('Could not find reservation for the provided user ', 404);
+        return next(error);
+    }
+    res.json({reservationForUser: reservationForUser.toObject( {getters: true}) });
+    // res.json({reservationForUser: reservationForUser.map(userReservation => userReservation.toObject({getters: true}))});
+}
+
 const createHotelReservation = async (req, res, next) => {
     const errors = validationResult(req);
 
@@ -56,7 +135,7 @@ const createHotelReservation = async (req, res, next) => {
     try {
         reservedRoomsPreviously = await Reservation.findOne({"hotel": hotelId});
         if(reservedRoomsPreviously) {
-            const error = new HttpError('Call the administrator if you would like to edit your reservation', 500);
+            const error = new HttpError('Call the administrator if you would like to edit your reservation. Currently, rebooking hotel is not supported yet.', 500);
             return next(error);
         }
     } catch (err) {}
@@ -102,7 +181,7 @@ const createHotelReservation = async (req, res, next) => {
         const error = new HttpError('Reserving hotel failed, please try again. If you are trying to make a reservation at a previous hotel you reserved and canceled, you have to contact the administrator to make a reservation at this hotel again. ', 500);
         return next(error);
     }
-    
+
     let hotel = await Hotel.findById(hotelId);
     let reservedRooms = await Reservation.findOne({"hotel": hotelId});
 
@@ -185,6 +264,8 @@ const cancelReservationByHotelId = async (req, res, next) => {
     res.status(200).json({message: 'Deleted reservation'})
 }
 
+exports.getUsers = getUsers;
 exports.getReservationByHotelId = getReservationByHotelId;
+exports.getReservationByUserId =  getReservationByUserId;
 exports.createHotelReservation = createHotelReservation;
 exports.cancelReservationByHotelId = cancelReservationByHotelId;

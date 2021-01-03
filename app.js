@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const reservationRoutes = require('./routes/user-hotel-reservation-routes');
 const hotelRoutes = require('./routes/hotels-routes');
 const usersRoutes = require('./routes/users-routes');
+const userReservationRoutes = require('./routes/user-reservation-routes');
 const HttpError = require('./models/http-error');
 
 const app = express();
@@ -21,6 +22,7 @@ app.use((req, res, next) => {
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/user-reservation-routes', userReservationRoutes);
 
 app.use((req, res, next) => {
     throw new HttpError('Could not find this route', 404);
@@ -36,7 +38,7 @@ app.use((error, req, res, next) => {
 });
 
 mongoose
-    .connect(`mongodb+srv://kmuni08:randomrelated123@@cluster0.vbxke.mongodb.net/hotel-reservation-management-system?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true })
+    .connect(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.vbxke.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, useFindAndModify: false })
     .then(() => {
         app.listen(5000);
     })

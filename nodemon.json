@@ -1,0 +1,9 @@
+{
+  "env": {
+    "DB_USER": "kmuni08",
+    "DB_PASSWORD": "randomrelated123@",
+    "DB_NAME": "hotel-reservation-management-system",
+    "GOOGLE_API_KEY": "AIzaSyByr6Lvgjv19D2qlbo9wTLgiG7YoMxNtGE",
+    "JWT_KEY": "supersecret_dont_share"
+  }
+}

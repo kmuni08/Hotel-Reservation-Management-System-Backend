@@ -6,13 +6,11 @@ const router = express.Router();
 
 
 router.get('/:creatorId', userHotelReservationControllers.getUsers);
-router.get('/:hid', userHotelReservationControllers.getReservationByHotelId);
-router.get('/uid/:uid', userHotelReservationControllers.getReservationByUserId);
-
+router.get('/:cid/:hid', userHotelReservationControllers.getReservationByHotelId);
 router.use(checkAuth);
 
 router.post(
-    '/',
+    '/:cid',
     [
         check('name')
             .not()
@@ -43,7 +41,7 @@ router.post(
     ],
     userHotelReservationControllers.createHotelReservation);
 
-router.delete('/cancel/:hid', userHotelReservationControllers.cancelReservationByHotelId);
+router.delete('/cancel/:cid/:hid', userHotelReservationControllers.cancelReservationByHotelId);
 
 
 module.exports = router;

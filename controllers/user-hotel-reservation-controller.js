@@ -11,49 +11,69 @@ const getUsers = async (req, res, next) => {
 
     const creatorId = req.params.creatorId;
 
-    let hotelCreator;
+    let hotelsByThisCreator;
     try {
-        hotelCreator = await Hotel.findOne({"creator": creatorId});
+        hotelsByThisCreator = await Hotel.find({"creator": creatorId});
     } catch (err) {
         const error = new HttpError('Something went wrong, could not find a hotel creator', 500);
         return next(error);
     }
 
-    if(!hotelCreator) {
+    if(!hotelsByThisCreator) {
         const error = new HttpError('Could not find hotel for the provided creator id ', 404);
         return next(error);
     }
 
-    let findHotelAndUser;
-    try {
-        findHotelAndUser = await Reservation.findOne({"hotel": hotelCreator._id});
-    } catch (err) {
-        const error = new HttpError('Something went wrong, could not find a hotel or user', 500);
-        return next(error);
+    // grab all reservations by hotels
+    let reservations = Array();
+    for(let i = 0; i < hotelsByThisCreator.length; i++) {
+        let temp;
+        try {
+            temp = await Reservation.find({"hotel": hotelsByThisCreator[i]._id});
+        } catch (err) {
+            const error = new HttpError('Something went wrong, could not find a hotel or user', 500);
+            return next(error);
+        }
+
+        if(!temp) {
+            const error = new HttpError('Could not find hotel for the provided creator id or user ', 404);
+            return next(error);
+        }
+
+        temp.forEach((reservation) => {
+            reservation.hotelName = hotelsByThisCreator[i].name;
+            reservations.push(reservation);
+        });
     }
 
-    if(!findHotelAndUser) {
-        const error = new HttpError('Could not find hotel for the provided creator id or user ', 404);
-        return next(error);
+    for(let i = 0; i < reservations.length; i++) {
+        let temp;
+        try {
+            temp = await User.findOne({"_id": reservations[i].user});
+        } catch (err) {
+            const error = new HttpError('Something went wrong, could not find a hotel or user', 500);
+            return next(error);
+        }
+
+        if(!temp) {
+            const error = new HttpError('Could not find hotel for the provided creator id or user ', 404);
+            return next(error);
+        }
+
+        reservations[i].userDetails = temp;
     }
 
-    let rightUser;
-    try {
-        // users = await User.find({_id: {$nin: ['5fee440aa9c27f16a037e2ee']}, $and: rightUser}, '-password');
-        // console.log("right", rightUser)
-        // console.log("first", users[0]._id)
-        rightUser = await User.find({_id: findHotelAndUser.user}, '-password');
+    let finalUsers = reservations.map(reservation => {
+        let user = reservation.userDetails;
+        user.hotelName = reservation.hotelName;
+        return user;
+    });
 
-    } catch (err) {
-        const error = new HttpError('Fetching users failed, please try again later.', 500);
-        return next(error);
-    }
-    
-
-    res.json({rightUser: rightUser.map(user => user.toObject({getters: true}))});
+    res.json({finalUsers : finalUsers.map(hello => hello.toObject({getters: true}))});
 };
 
 const getReservationByHotelId = async (req, res, next) => {
+    const customerId = req.params.cid;
     const hotelId = req.params.hid;
 
     let hotel;
@@ -69,62 +89,30 @@ const getReservationByHotelId = async (req, res, next) => {
         return next(error);
     }
 
-    let reservation;
+    let reservationByHotel;
     try {
-        reservation = await Reservation.findOne({"hotel": hotelId});
+        reservationByHotel = await Reservation.findOne({"hotel": hotelId, "user": customerId });
     } catch (err) {
         const error = new HttpError('Something went wrong, could not find a hotel', 500);
         return next(error);
     }
 
-    if(!reservation) {
+    if(!reservationByHotel) {
         const error = new HttpError('Could not find reservation for the provided hotel ', 404);
         return next(error);
     }
 
-    res.json({reservation: reservation.toObject( {getters: true}) });
-}
-
-const getReservationByUserId = async (req, res, next) => {
-    const userIdentification = req.params.uid;
-
-    let user;
-    try {
-        user = await User.findById(userIdentification);
-    } catch (err) {
-        const error = new HttpError('Something went wrong, could not find this user.', 500);
-        return next(error);
-    }
-
-    if(!user) {
-        const error = new HttpError('Could not find a user for the provided id. ', 404);
-        return next(error);
-    }
-
-    let reservationForUser;
-    try {
-        reservationForUser = await Reservation.findOne({"user": userIdentification });
-    } catch (err) {
-        const error = new HttpError('Something went wrong, could not find a reservation for user.', 500);
-        return next(error);
-    }
-    console.log(reservationForUser);
-
-    if(!reservationForUser) {
-        const error = new HttpError('Could not find reservation for the provided user ', 404);
-        return next(error);
-    }
-    res.json({reservationForUser: reservationForUser.toObject( {getters: true}) });
-    // res.json({reservationForUser: reservationForUser.map(userReservation => userReservation.toObject({getters: true}))});
-}
+    res.json({reservationByHotel: reservationByHotel.toObject( {getters: true}) });
+};
 
 const createHotelReservation = async (req, res, next) => {
     const errors = validationResult(req);
 
+
     if(!errors.isEmpty()) {
         next(new HttpError('Invalid inputs passed, please check your data.', 422));
     }
-    const { name, address, description, hotelId, deluxeNumOfRooms, deluxe_user_pick, deluxePrice, standardNumOfRooms,standard_user_pick, standardPrice, suitesNumOfRooms, suites_user_pick, suitesPrice } = req.body;
+    const { userId, name, address, description, hotelId, startDateMonth, startDateNum, startDateYear, endDateMonth, endDateNum, endDateYear, deluxeNumOfRooms, deluxe_user_pick, deluxePrice, standardNumOfRooms,standard_user_pick, standardPrice, suitesNumOfRooms, suites_user_pick, suitesPrice } = req.body;
 
     if((deluxe_user_pick > deluxeNumOfRooms) || (standard_user_pick > standardNumOfRooms) || (suites_user_pick > suitesNumOfRooms)) {
         const error = new HttpError('Not suitable for reservation. Invalid data inputs', 404);
@@ -133,7 +121,7 @@ const createHotelReservation = async (req, res, next) => {
 
     let reservedRoomsPreviously;
     try {
-        reservedRoomsPreviously = await Reservation.findOne({"hotel": hotelId});
+        reservedRoomsPreviously = await Reservation.findOne({"hotel": hotelId, "user": userId});
         if(reservedRoomsPreviously) {
             const error = new HttpError('Call the administrator if you would like to edit your reservation. Currently, rebooking hotel is not supported yet.', 500);
             return next(error);
@@ -146,6 +134,12 @@ const createHotelReservation = async (req, res, next) => {
         address,
         description,
         hotel: hotelId,
+        startDateMonth,
+        startDateNum,
+        startDateYear,
+        endDateMonth,
+        endDateNum,
+        endDateYear,
         user: req.userData.userId,
         deluxe_user_pick,
         deluxePrice: deluxe_user_pick * deluxePrice,
@@ -153,8 +147,7 @@ const createHotelReservation = async (req, res, next) => {
         standardPrice: standard_user_pick * standardPrice,
         suites_user_pick,
         suitesPrice: suites_user_pick * suitesPrice,
-        totalPayment: (deluxe_user_pick * deluxePrice) + (standard_user_pick * standardPrice) + (suites_user_pick * suitesPrice),
-        reservationStatus: "Currently Reserved"
+        totalPayment: (deluxe_user_pick * deluxePrice) + (standard_user_pick * standardPrice) + (suites_user_pick * suitesPrice)
     });
 
     let currentUser;
@@ -183,7 +176,7 @@ const createHotelReservation = async (req, res, next) => {
     }
 
     let hotel = await Hotel.findById(hotelId);
-    let reservedRooms = await Reservation.findOne({"hotel": hotelId});
+    let reservedRooms = await Reservation.findOne({"hotel": hotelId, "user": currentUser});
 
     try {
         await Hotel.findByIdAndUpdate(hotelId,
@@ -201,7 +194,7 @@ const createHotelReservation = async (req, res, next) => {
 };
 
 const cancelReservationByHotelId = async (req, res, next) => {
-
+    const cust_id = req.params.cid;
     const hotelId = req.params.hid;
 
     let hotel;
@@ -217,22 +210,23 @@ const cancelReservationByHotelId = async (req, res, next) => {
         return next(error);
     }
 
+    let tempCheckReservation = await Reservation.findOne({"hotel": hotelId, "user": cust_id});
+    if (tempCheckReservation.user.toString() !== cust_id.toString()) {
+        const error = new HttpError('You are not allowed to delete this reservation', 401);
+        return next(error);
+    }
+
+
     let reservation;
     try {
-        reservation= await Reservation.findOneAndDelete(hotelId).populate('user');
+        reservation= await Reservation.findOneAndDelete({"hotel": hotelId, "user": cust_id}).populate('user');
     } catch (err) {
         const error = new HttpError('Something went wrong, could not delete reservation.', 500);
         return next(error);
     }
-    console.log(reservation);
 
     if(!reservation) {
         const error = new HttpError('Could not find reservation for this id.', 404);
-        return next(error);
-    }
-
-    if (reservation.user.id !== req.userData.userId) {
-        const error = new HttpError('You are not allowed to delete this reservation', 401);
         return next(error);
     }
 
@@ -249,12 +243,11 @@ const cancelReservationByHotelId = async (req, res, next) => {
     }
 
     try {
-        await Hotel.findOneAndUpdate(
+        await Hotel.findByIdAndUpdate({"_id": hotelId},
             {
-                "hotel": hotelId,
-                deluxeNumOfRooms: reservation.deluxe_user_pick + hotel.deluxeNumOfRooms,
-                standardNumOfRooms: reservation.standard_user_pick + hotel.standardNumOfRooms,
-                suitesNumOfRooms: reservation.suites_user_pick + hotel.suitesNumOfRooms
+                deluxeNumOfRooms: tempCheckReservation.deluxe_user_pick + hotel.deluxeNumOfRooms,
+                standardNumOfRooms: tempCheckReservation.standard_user_pick + hotel.standardNumOfRooms,
+                suitesNumOfRooms: tempCheckReservation.suites_user_pick + hotel.suitesNumOfRooms
                 });
     } catch (err) {
         const error = new HttpError('Something went wrong, could not find a hotel', 500);
@@ -264,8 +257,7 @@ const cancelReservationByHotelId = async (req, res, next) => {
     res.status(200).json({message: 'Deleted reservation'})
 }
 
-exports.getUsers = getUsers;
 exports.getReservationByHotelId = getReservationByHotelId;
-exports.getReservationByUserId =  getReservationByUserId;
 exports.createHotelReservation = createHotelReservation;
 exports.cancelReservationByHotelId = cancelReservationByHotelId;
+exports.getUsers = getUsers;

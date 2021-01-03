@@ -10,6 +10,7 @@ router.get('/:hid', hotelControllers.getHotelById);
 
 router.get('/user/:uid', hotelControllers.getHotelsByUserId);
 
+
 router.use(checkAuth);
 
 router.post(

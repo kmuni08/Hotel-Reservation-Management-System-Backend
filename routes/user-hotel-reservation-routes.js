@@ -5,7 +5,7 @@ const userHotelReservationControllers = require('../controllers/user-hotel-reser
 const router = express.Router();
 
 
-router.get('/:creatorId', userHotelReservationControllers.getUsers);
+router.get('/:creatorId/cm/:cm/cd/:cd/cy/:cy', userHotelReservationControllers.getUsers);
 router.get('/:cid/:hid', userHotelReservationControllers.getReservationByHotelId);
 router.use(checkAuth);
 

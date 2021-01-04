@@ -10,6 +10,9 @@ const Hotel = require('../models/hotel');
 const getUsers = async (req, res, next) => {
 
     const creatorId = req.params.creatorId;
+    const currentMonth = req.params.cm;
+    const currentDate = req.params.cd;
+    const currentYear = req.params.cy;
 
     let hotelsByThisCreator;
     try {
@@ -43,8 +46,41 @@ const getUsers = async (req, res, next) => {
         temp.forEach((reservation) => {
             reservation.hotelName = hotelsByThisCreator[i].name;
             reservation.hotelAddress = hotelsByThisCreator[i].address;
+            reservation.hotelDescription = hotelsByThisCreator[i].description;
+            // reservation.hotelStartDateMonth = hotelsByThisCreator[i].startDateMonth;
+            // reservation.hotelStartDateNum = hotelsByThisCreator[i].startDateNum;
+            // reservation.hotelStartDateYear = hotelsByThisCreator[i].startDateYear;
+            // reservation.hotelEndDateMonth = hotelsByThisCreator[i].endDateMonth;
+            // reservation.hotelEndDateNum = hotelsByThisCreator[i].endDateNum;
+            // reservation.hotelEndDateYear = hotelsByThisCreator[i].endDateYear;
+            // reservation.hotelDeluxeUserPick = hotelsByThisCreator[i].deluxe_user_pick;
+            reservation.deluxePrice = hotelsByThisCreator[i].deluxePrice;
+            // reservation.hotelStandardUserPick = hotelsByThisCreator[i].standard_user_pick;
+            reservation.standardPrice = hotelsByThisCreator[i].standardPrice;
+            // reservation.hotelSuitesUserPick = hotelsByThisCreator[i].suites_user_pick;
+            reservation.suitesPrice = hotelsByThisCreator[i].suitesPrice;
+            // reservation.totalPayment = hotelsByThisCreator[i].totalPayment;
             reservations.push(reservation);
         });
+    }
+
+
+    let i;
+    for(i = 0; i < reservations.length; i++) {
+        if(currentYear > reservations[i].endDateYear && currentMonth >= reservations[i].endDateMonth && currentDate > reservations[i].endDateNum ) {
+            let deleteReservationAutomatically
+            try {
+                deleteReservationAutomatically = await Reservation.findByIdAndDelete(reservations[i]._id);
+            } catch (err) {
+                const error = new HttpError('Something went wrong, could not delete this reservation', 500);
+                return next(error);
+            }
+            reservations.splice(i, 1);
+            if(!deleteReservationAutomatically) {
+                const error = new HttpError('Could not find reservation. Sorry. ', 404);
+                return next(error);
+            }
+        }
     }
 
     for(let i = 0; i < reservations.length; i++) {
@@ -61,22 +97,34 @@ const getUsers = async (req, res, next) => {
             return next(error);
         }
         reservations[i].userDetails = temp;
-        // console.log("reservation temp", temp);
-        // console.log(reservations[i]);
 
     }
 
     let finalUsers = reservations.map(reservation => {
-        let user = reservation.userDetails;
-        // console.log("user", user);
+        // let user = reservation.userDetails;
+        let user = {};
+        user.name = reservation.userDetails.name;
+        user.email= reservation.userDetails.email;
         user.hotelName = reservation.hotelName;
         user.hotelAddress = reservation.hotelAddress;
-        // console.log(user.hotelAddress)
-        console.log(user);
+        user.hotelDescription = reservation.hotelDescription;
+        // user.hotelStartDateMonth = reservation.reservations.startDateMonth;
+        // user.hotelStartDateNum = reservation.hotelStartDateNum;
+        // user.hotelStartDateYear = reservation.hotelStartDateYear;
+        // user.hotelEndDateMonth = reservation.hotelEndDateMonth;
+        // user.hotelEndDateNum = reservation.hotelEndDateNum;
+        // user.hotelEndDateYear = reservation.hotelEndDateYear;
+        // user.hotelDeluxeUserPick = reservation.hotelDeluxeUserPick;
+        user.deluxePrice = reservation.deluxePrice;
+        // user.hotelStandardUserPick = reservation.hotelStandardUserPick;
+        user.standardPrice  = reservation.standardPrice ;
+        // user.hotelSuitesUserPick = reservation.hotelSuitesUserPick;
+        user.suitesPrice = reservation.suitesPrice;
+        // user.totalPayment = reservation.totalPayment;
         return user;
     });
 
-    res.json({finalUsers : finalUsers.map(user => user.toObject({getters: true}))});
+    res.json({finalUsers});
 };
 
 const getReservationByHotelId = async (req, res, next) => {

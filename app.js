@@ -22,7 +22,6 @@ app.use((req, res, next) => {
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/user-reservation-routes', userReservationRoutes);
 
 app.use((req, res, next) => {
     throw new HttpError('Could not find this route', 404);

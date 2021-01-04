@@ -42,6 +42,7 @@ const getUsers = async (req, res, next) => {
 
         temp.forEach((reservation) => {
             reservation.hotelName = hotelsByThisCreator[i].name;
+            reservation.hotelAddress = hotelsByThisCreator[i].address;
             reservations.push(reservation);
         });
     }
@@ -59,17 +60,23 @@ const getUsers = async (req, res, next) => {
             const error = new HttpError('Could not find hotel for the provided creator id or user ', 404);
             return next(error);
         }
-
         reservations[i].userDetails = temp;
+        // console.log("reservation temp", temp);
+        // console.log(reservations[i]);
+
     }
 
     let finalUsers = reservations.map(reservation => {
         let user = reservation.userDetails;
+        // console.log("user", user);
         user.hotelName = reservation.hotelName;
+        user.hotelAddress = reservation.hotelAddress;
+        // console.log(user.hotelAddress)
+        console.log(user);
         return user;
     });
 
-    res.json({finalUsers : finalUsers.map(hello => hello.toObject({getters: true}))});
+    res.json({finalUsers : finalUsers.map(user => user.toObject({getters: true}))});
 };
 
 const getReservationByHotelId = async (req, res, next) => {

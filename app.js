@@ -5,7 +5,6 @@ const mongoose = require('mongoose');
 const reservationRoutes = require('./routes/user-hotel-reservation-routes');
 const hotelRoutes = require('./routes/hotels-routes');
 const usersRoutes = require('./routes/users-routes');
-const userReservationRoutes = require('./routes/user-reservation-routes');
 const HttpError = require('./models/http-error');
 
 const app = express();

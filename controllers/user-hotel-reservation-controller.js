@@ -55,21 +55,41 @@ const getUsers = async (req, res, next) => {
     }
 
     let i;
+    let deleteCount = [];
     for(i = 0; i < reservations.length; i++) {
         if(currentYear >= reservations[i].endDateYear && currentMonth >= reservations[i].endDateMonth && currentDate > reservations[i].endDateNum ) {
             let deleteReservationAutomatically
             try {
                 deleteReservationAutomatically = await Reservation.findByIdAndDelete(reservations[i]._id);
+
             } catch (err) {
                 const error = new HttpError('Something went wrong, could not delete this reservation', 500);
                 return next(error);
             }
-            reservations.splice(i, 1);
+
             if(!deleteReservationAutomatically) {
                 const error = new HttpError('Could not find reservation. Sorry. ', 404);
                 return next(error);
             }
+            deleteCount.push(i);
+
+            try {
+                await Hotel.findByIdAndUpdate({"_id": reservations[i].hotel},
+                    {
+                        deluxeNumOfRooms:  reservations[i].deluxe_user_pick + hotelsByThisCreator[i].deluxeNumOfRooms,
+                        standardNumOfRooms: reservations[i].standard_user_pick + hotelsByThisCreator[i].standardNumOfRooms,
+                        suitesNumOfRooms: reservations[i].suites_user_pick + hotelsByThisCreator[i].suitesNumOfRooms
+                    });
+            } catch (err) {
+                const error = new HttpError('Something went wrong, could not find a hotel', 500);
+                return next(error);
+            }
         }
+    }
+
+    let j;
+    for (j = 0; j < deleteCount.length; j++) {
+        reservations.splice(deleteCount[j], 1);
     }
 
     for(let i = 0; i < reservations.length; i++) {
@@ -95,8 +115,8 @@ const getUsers = async (req, res, next) => {
         reservations[i].hotelEndDateYear = reservations[i].endDateYear;
         reservations[i].hotelDeluxeRoomsPicked  = reservations[i].deluxe_user_pick;
         reservations[i].hotelStandardRoomsPicked  = reservations[i].standard_user_pick;
-        reservations[i].hotelSuitesRoomsPicked = reservations[i].suites_user_pick;;
-        reservations[i].totalPaymentForReserved = reservations[i].totalPayment
+        reservations[i].hotelSuitesRoomsPicked = reservations[i].suites_user_pick;
+        reservations[i].totalPaymentForReserved = reservations[i].totalPayment;
     }
 
     let finalUsers = reservations.map(reservation => {
@@ -120,8 +140,6 @@ const getUsers = async (req, res, next) => {
         user.hotelSuitesRoomsPicked = reservation.hotelSuitesRoomsPicked;
         user.suitesPrice = reservation.suitesPrice;
         user.totalPaymentForReserved = reservation.totalPaymentForReserved;
-
-        // console.log(user.hotelStartDateMonth);
         return user;
     });
 
@@ -164,7 +182,8 @@ const getReservationByHotelId = async (req, res, next) => {
     if(currentYear >= reservationByHotel.endDateYear && currentMonth >= reservationByHotel.endDateMonth && currentDate > reservationByHotel.endDateNum ) {
      let deleteReservationOnUserEnd;
         try {
-            deleteReservationOnUserEnd = await Reservation.findOneAndDelete( {"_id": reservationByHotel._id, "endDateNum": {$lt: reservationByHotel.endDateNum}});
+            deleteReservationOnUserEnd = await Reservation.findOneAndDelete( {"_id": reservationByHotel._id, "endDateNum": {$lte: reservationByHotel.endDateNum}});
+
         } catch (err) {
             const error = new HttpError('Something went wrong, could not delete this reservation', 500);
             return next(error);
@@ -173,6 +192,18 @@ const getReservationByHotelId = async (req, res, next) => {
             const error = new HttpError('Could not find previous reservation. It must have expired. Make a reservation for a new one. ', 404);
             return next(error);
         }
+    }
+
+    try {
+        await Hotel.findByIdAndUpdate({"_id": reservationByHotel.hotel},
+            {
+                deluxeNumOfRooms: reservationByHotel.deluxe_user_pick + hotel.deluxeNumOfRooms,
+                standardNumOfRooms: reservationByHotel.standard_user_pick + hotel.standardNumOfRooms,
+                suitesNumOfRooms: reservationByHotel.suites_user_pick + hotel.suitesNumOfRooms
+            });
+    } catch (err) {
+        const error = new HttpError('Something went wrong, could not find a hotel', 500);
+        return next(error);
     }
 
     res.json({reservationByHotel: reservationByHotel.toObject( {getters: true}) });

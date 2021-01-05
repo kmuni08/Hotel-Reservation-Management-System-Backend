@@ -179,7 +179,7 @@ const getReservationByHotelId = async (req, res, next) => {
         return next(error);
     }
 
-    if(currentYear >= reservationByHotel.endDateYear && currentMonth >= reservationByHotel.endDateMonth && currentDate > reservationByHotel.endDateNum ) {
+    if(currentYear >= reservationByHotel.endDateYear && currentMonth >= reservationByHotel.endDateMonth && 11 > reservationByHotel.endDateNum ) {
      let deleteReservationOnUserEnd;
         try {
             deleteReservationOnUserEnd = await Reservation.findOneAndDelete( {"_id": reservationByHotel._id, "endDateNum": {$lte: reservationByHotel.endDateNum}});
@@ -192,18 +192,18 @@ const getReservationByHotelId = async (req, res, next) => {
             const error = new HttpError('Could not find previous reservation. It must have expired. Make a reservation for a new one. ', 404);
             return next(error);
         }
-    }
 
-    try {
-        await Hotel.findByIdAndUpdate({"_id": reservationByHotel.hotel},
-            {
-                deluxeNumOfRooms: reservationByHotel.deluxe_user_pick + hotel.deluxeNumOfRooms,
-                standardNumOfRooms: reservationByHotel.standard_user_pick + hotel.standardNumOfRooms,
-                suitesNumOfRooms: reservationByHotel.suites_user_pick + hotel.suitesNumOfRooms
-            });
-    } catch (err) {
-        const error = new HttpError('Something went wrong, could not find a hotel', 500);
-        return next(error);
+        try {
+            await Hotel.findByIdAndUpdate({"_id": reservationByHotel.hotel},
+                {
+                    deluxeNumOfRooms: reservationByHotel.deluxe_user_pick + hotel.deluxeNumOfRooms,
+                    standardNumOfRooms: reservationByHotel.standard_user_pick + hotel.standardNumOfRooms,
+                    suitesNumOfRooms: reservationByHotel.suites_user_pick + hotel.suitesNumOfRooms
+                });
+        } catch (err) {
+            const error = new HttpError('Something went wrong, could not find a hotel', 500);
+            return next(error);
+        }
     }
 
     res.json({reservationByHotel: reservationByHotel.toObject( {getters: true}) });

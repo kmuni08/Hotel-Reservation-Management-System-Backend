@@ -179,7 +179,7 @@ const getReservationByHotelId = async (req, res, next) => {
         return next(error);
     }
 
-    if(currentYear >= reservationByHotel.endDateYear && currentMonth >= reservationByHotel.endDateMonth && 11 > reservationByHotel.endDateNum ) {
+    if(currentYear >= reservationByHotel.endDateYear && currentMonth >= reservationByHotel.endDateMonth && currentDate > reservationByHotel.endDateNum ) {
      let deleteReservationOnUserEnd;
         try {
             deleteReservationOnUserEnd = await Reservation.findOneAndDelete( {"_id": reservationByHotel._id, "endDateNum": {$lte: reservationByHotel.endDateNum}});
